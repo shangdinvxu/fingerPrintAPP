@@ -198,13 +198,17 @@ public class DownloadActivity extends AppCompatActivity {
                             }
                             if(!StringUtils.isEmpty(mlist.get(i).getWorker_code())){
                                 byte[] bytes = hexString2Bytes(mlist.get(i).getWorker_code());
-                                System.arraycopy(bytes,0,userItem.enlcon1,1,4);
-                                UsersList.getInstance().UpdateUserNFC(userItem);
+                                if(bytes!=null){
+                                    System.arraycopy(bytes,0,userItem.enlcon1,1,4);
+                                    UsersList.getInstance().UpdateUserNFC(userItem);
+                                }
                             }
                         } else {
                             if(!StringUtils.isEmpty(mlist.get(i).getWorker_code())){
                                 byte[] bytes = hexString2Bytes(mlist.get(i).getWorker_code());
-                                System.arraycopy(bytes,0,userItem.enlcon1,1,4);
+                                if(bytes!=null) {
+                                    System.arraycopy(bytes, 0, userItem.enlcon1, 1, 4);
+                                }
                             }
                             UsersList.getInstance().AppendUser(userItem);
                         }

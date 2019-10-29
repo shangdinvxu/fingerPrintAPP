@@ -125,6 +125,76 @@ public class LogsList {
 		return logsList;
 	}
 
+
+	public void updateStateByUserId(int id ) {
+		//�޸�SQL��� update SQL statemen
+		db.execSQL("update TB_LOGS set status1=1 where userid=?", new Object[]{id});
+	}
+
+
+	public List<LogItem> LoadNoUpdateData(){
+		logsList.clear();
+//		"select * from TB_LOGS where datetime(datetime) between datetime('"
+//				+startTime+"') and datetime('"+endTime+"')";
+		String[] arr = {0+""};
+		Cursor cursor = db.query ("TB_LOGS",null,"status1 = ?",arr,null,null,null);
+		if(cursor!=null){
+			if(cursor.moveToFirst()){
+				for(int i=0;i<cursor.getCount();i++){
+					LogItem li=new LogItem();
+					li.id=cursor.getInt(0);
+					li.userid=cursor.getInt(1);
+					li.username=cursor.getString(2);
+					li.status1=cursor.getInt(3);
+					li.status2=cursor.getInt(4);
+					li.fingertype=cursor.getInt(5);
+					li.imei=cursor.getString(6);
+					li.state=cursor.getInt(7);
+					li.currenttime=cursor.getString(8);
+					li.canteentype=cursor.getString(9);
+					li.workcode=cursor.getString(10);
+					li.datetime=cursor.getString(11);
+					logsList.add(li);
+					cursor.moveToNext();
+				}
+			}
+			cursor.close();
+		}
+		return logsList;
+	}
+
+
+	public List<LogItem> LoadByTime(String startTime,String endTime){
+		logsList.clear();
+//		"select * from TB_LOGS where datetime(datetime) between datetime('"
+//				+startTime+"') and datetime('"+endTime+"')";
+		String arr[] = {startTime,endTime};
+		Cursor cursor = db.query ("TB_LOGS",null,"datetime between ? and ?",arr,null,null,null);
+		if(cursor!=null){
+			if(cursor.moveToFirst()){
+				for(int i=0;i<cursor.getCount();i++){
+					LogItem li=new LogItem();
+					li.id=cursor.getInt(0);
+					li.userid=cursor.getInt(1);
+					li.username=cursor.getString(2);
+					li.status1=cursor.getInt(3);
+					li.status2=cursor.getInt(4);
+					li.fingertype=cursor.getInt(5);
+					li.imei=cursor.getString(6);
+					li.state=cursor.getInt(7);
+					li.currenttime=cursor.getString(8);
+					li.canteentype=cursor.getString(9);
+					li.workcode=cursor.getString(10);
+					li.datetime=cursor.getString(11);
+					logsList.add(li);
+					cursor.moveToNext();
+				}
+			}
+			cursor.close();
+		}
+		return logsList;
+	}
+
 	public List<LogItem> QueryById(int userid){
 		List<LogItem> list = new ArrayList<>();
 		Cursor cursor=db.query("TB_LOGS",null,"userid=?",new String[]{String.valueOf(userid)},null,null,null);

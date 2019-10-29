@@ -884,12 +884,7 @@ public class EnrollActivity extends Activity {
      * 绑定用户NFC
      */
     private void upLoadNFC(final byte[] sn) {
-        final String nfcString =/*Integer.toString(count)+":"+*/
-                Integer.toHexString(sn[0] & 0xFF).toUpperCase() +
-                        Integer.toHexString(sn[1] & 0xFF).toUpperCase() +
-                        Integer.toHexString(sn[2] & 0xFF).toUpperCase() +
-                        Integer.toHexString(sn[3] & 0xFF).toUpperCase();
-
+        final String nfcString = bytes2HexString(sn);
         final ProgressDialog dialog = new ProgressDialog(EnrollActivity.this);
         dialog.setMessage("");
         dialog.show();

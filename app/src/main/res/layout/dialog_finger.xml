@@ -27,16 +27,26 @@
             android:layout_height="200dp"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="35dp"/>
+
         <TextView
             android:id="@+id/tv_state_message"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:textColor="@color/white"
             android:layout_marginTop="35dp"
+            android:textColor="@color/white"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="10dp"
             android:layout_marginBottom="35dp"
-            android:textStyle="bold"
-            android:textSize="30sp"/>
+            android:textColor="@color/red"
+            android:text="请勿替他人打卡"
+            android:textSize="30sp"
+            android:textStyle="bold" />
     </LinearLayout>
     <ImageView
         android:id="@+id/img_close"

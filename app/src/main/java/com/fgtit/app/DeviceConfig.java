@@ -41,7 +41,7 @@ public class DeviceConfig {
 	public byte		locksignal2=0;
 	public byte		wiegand=0;
 	public byte		alarmdelay=10;
-	public byte		doordelay=5;
+	public byte		doordelay=25;
 	public byte		idlekey=15;
 	public byte		idledsp=30;
 	public byte		workmode=0;
@@ -118,7 +118,7 @@ public class DeviceConfig {
 		locksignal2=0;	
 		wiegand=0;		
 		alarmdelay=10;
-		doordelay=5;	
+		doordelay=25;
 		idlekey=15;	
 		idledsp=30;	
 		workmode=0;		

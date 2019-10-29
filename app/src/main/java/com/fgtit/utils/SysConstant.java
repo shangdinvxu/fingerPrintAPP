@@ -7,7 +7,6 @@ public interface SysConstant {
     String SUB_URL = "linkloving_oa_api/";
 
 //    String  DB = "0910";
-//    String  DB = "New";
     String  DB = "odoo10";
 
 

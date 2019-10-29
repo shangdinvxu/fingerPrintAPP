@@ -62,6 +62,8 @@ public class CanteenTotalInfoActivity extends Activity {
         SimpleDateFormat formatter2 = new SimpleDateFormat("yyyy-MM-dd");
         String dateString2 = formatter2.format(new Date());
         initData(dateString2);
+        today.setBackgroundColor(getResources().getColor(R.color.darkcyan));
+
     }
 
     private void initData(String dateString) {
@@ -107,11 +109,15 @@ public class CanteenTotalInfoActivity extends Activity {
                 SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
                 String dateString= formatter.format(calendar.getTime());
                 initData(dateString);
+                yesterday.setBackgroundColor(getResources().getColor(R.color.darkcyan));
+                today.setBackgroundColor(getResources().getColor(R.color.colorbackground));
                 break;
             case R.id.today:
                 SimpleDateFormat formatter2 = new SimpleDateFormat("yyyy-MM-dd");
                 String dateString2 = formatter2.format(new Date());
                 initData(dateString2);
+                today.setBackgroundColor(getResources().getColor(R.color.darkcyan));
+                yesterday.setBackgroundColor(getResources().getColor(R.color.colorbackground));
                 break;
         }
     }

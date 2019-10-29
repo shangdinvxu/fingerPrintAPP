@@ -2,23 +2,28 @@ package com.fgtit;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.hardware.Camera;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.nfc.NfcAdapter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.SystemClock;
+import android.speech.tts.TextToSpeech;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Gravity;
@@ -48,9 +53,11 @@ import com.fgtit.app.UserItem;
 import com.fgtit.app.UsersList;
 import com.fgtit.fingerprintapp.R;
 import com.fgtit.fpcore.FPMatch;
+import com.fgtit.http.FirBean;
 import com.fgtit.http.NetworkInfoReceiver;
 import com.fgtit.http.PosApi;
 import com.fgtit.http.RetrofitClient;
+import com.fgtit.http.RetrofitFirClient;
 import com.fgtit.http.RetrofitLoginClient;
 import com.fgtit.multilevelTreeList.Node;
 import com.fgtit.utils.DateTool;
@@ -66,6 +73,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.Timer;
@@ -79,7 +87,9 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+import static com.fgtit.EnrollActivity.bytes2HexString;
 import static com.fgtit.EnrollActivity.hexString2Bytes;
+import static com.fgtit.SplashActivity.getAppVersionCode;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -118,7 +128,9 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.btn_login_by_finger)
     Button btnLoginByFinger;
     @BindView(R.id.btn_show_info)
-    TextView btnShowInfo;
+    Button btnShowInfo;
+//    @BindView(R.id.test)
+//    Button test;
 
     private MediaPlayer mediaPlayer;
 
@@ -181,6 +193,8 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean isShowCanteen = false;
 
+    private TextToSpeech mTextToSpeech;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -215,14 +229,16 @@ public class MainActivity extends AppCompatActivity {
 
         //指纹模块设置  打开
         Fingerprint.getInstance().setContext(this);
+        Fingerprint.getInstance().setHandler(fingerprintHandler);
         Fingerprint.getInstance().Open();
+        Fingerprint.getInstance().Process();
 
-        List<LogItem> logItems = LogsList.getInstance().LoadAll();
+//        List<LogItem> logItems = LogsList.getInstance().LoadAll();
         //过滤出此员工的食堂打卡记录
-        if (logItems.size() > 0) {
-            num_canteen = logItems.size();
-            tvCanteenNum.setText("已打卡  " + num_canteen);
-        }
+//        if (logItems.size() > 0) {
+//            num_canteen = logItems.size();
+//            tvCanteenNum.setText("已打卡  " + num_canteen);
+//        }
 
 
         SocketServer.getInstance().setContext(this);
@@ -239,9 +255,57 @@ public class MainActivity extends AppCompatActivity {
 
 //        原onresume 里面的内容
         UsersList.getInstance().LoadAll();
-        UpdateFunGO.onResume(this);
+//        UpdateFunGO.onResume(this);
+        initAutoUpdateApp();
+
     }
 
+
+    private void initAutoUpdateApp() {
+//        UpdateKey.API_TOKEN = SysConstant.APITOKEN;
+//        UpdateKey.APP_ID = SysConstant.APPID;
+//        //下载方式:
+////        UpdateKey.DialogOrNotification = UpdateKey.WITH_DIALOG;
+//        UpdateFunGO.init(this);
+        PosApi posApi = RetrofitFirClient.getInstance(this).create(PosApi.class);
+        Call<FirBean> firVersion = posApi.getFirVersion(SysConstant.APITOKEN);
+        firVersion.enqueue(new Callback<FirBean>() {
+            @Override
+            public void onResponse(Call<FirBean> call, final Response<FirBean> response) {
+                String version = response.body().getVersion();
+                Integer integer = Integer.valueOf(version);
+                if (getAppVersionCode(MainActivity.this)<integer){
+                    final AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this)
+                            .setTitle("下载更新")
+                            .setMessage(response.body().getChangelog())
+                            .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    //do  delete thing
+                                    Intent intent=new Intent();
+                                    intent.setAction("android.intent.action.VIEW");
+                                    Uri CONTENT_URI_BROWSERS = Uri.parse(response.body().getUpdate_url());
+                                    intent.setData(CONTENT_URI_BROWSERS);
+                                    intent.setClassName("com.android.browser", "com.android.browser.BrowserActivity");
+                                    startActivity(intent);
+                                }
+                            })
+                            .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+
+                                }
+                            });
+                    builder.create().show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<FirBean> call, Throwable t) {
+
+            }
+        });
+    }
 
     public void InitReadCard() {
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
@@ -275,11 +339,7 @@ public class MainActivity extends AppCompatActivity {
             closeDialogHandler.removeCallbacks(runnableCloseDialog);
         }
         byte[] sn = intent.getByteArrayExtra(NfcAdapter.EXTRA_ID);
-        String cardstr =/*Integer.toString(count)+":"+*/
-                Integer.toHexString(sn[0] & 0xFF).toUpperCase() +
-                        Integer.toHexString(sn[1] & 0xFF).toUpperCase() +
-                        Integer.toHexString(sn[2] & 0xFF).toUpperCase() +
-                        Integer.toHexString(sn[3] & 0xFF).toUpperCase();
+        String cardstr = bytes2HexString(sn);
         UserItem ui = UsersList.getInstance().FindUserItemByCard(sn);
         if (ui != null) {
             Log.e("robotime", "name = " + ui.username);
@@ -344,7 +404,8 @@ public class MainActivity extends AppCompatActivity {
 
     @OnClick(R.id.name_version)
     void setNameVersion() {
-        UpdateFunGO.manualStart(this);
+//        UpdateFunGO.manualStart(this);
+        initAutoUpdateApp();
     }
 
     @OnClick(R.id.btn_login_by_finger)
@@ -494,8 +555,6 @@ public class MainActivity extends AppCompatActivity {
         if (fingerType != 2 && fingerType != 4) {
             closeDialogHandler.postDelayed(runnableCloseDialog, 1000 * 10);
         }
-        Fingerprint.getInstance().setHandler(fingerprintHandler);
-        Fingerprint.getInstance().Process();
         if (dialogFinger == null) {
             dialogFinger = new DialogFinger(MainActivity.this, R.style.AlertDialogStyle);
             dialogFinger.show();
@@ -535,7 +594,13 @@ public class MainActivity extends AppCompatActivity {
 //            audioMgr.setStreamVolume(AudioManager.STREAM_MUSIC, 0, AudioManager.FLAG_PLAY_SOUND);
             switch (msg.what) {
                 case 1:
-                    mediaPlayer = MediaPlayer.create(MainActivity.this, R.raw.sucessful);
+                    if(fingerType==0){
+                        mediaPlayer = MediaPlayer.create(MainActivity.this, R.raw.go_work);
+                    }else if(fingerType==1) {
+                        mediaPlayer = MediaPlayer.create(MainActivity.this, R.raw.out_work);
+                    }else {
+                        mediaPlayer = MediaPlayer.create(MainActivity.this, R.raw.sucessful);
+                    }
                     mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
                     mediaPlayer.start();
                     break;
@@ -903,7 +968,6 @@ public class MainActivity extends AppCompatActivity {
     private void toCheckCanteen(UserItem ui, String cardString) {
         int anInt = SPUtils.getInstance().getInt(SysConstant.CANTEEN_TIME_NUM, 0);
         if (anInt > 0) {
-            List<LogItem> logItems = LogsList.getInstance().LoadAll();
             boolean is_in = false;
             for (int i = 0; i < anInt; i++) {
                 SharedPreferences sharedPreferences = getSharedPreferences(String.valueOf(i), Activity.MODE_PRIVATE);
@@ -915,6 +979,8 @@ public class MainActivity extends AppCompatActivity {
                 int i1 = DateTool.timeComparator(canteen_starttime, DateTool.getNowDatePos());
                 int i2 = DateTool.timeComparator(canteen_endtime, DateTool.getNowDatePos());
                 if (i1 < 0 && i2 > 0) {//在用餐时间
+                    List<LogItem> logItems = LogsList.getInstance().LoadByTime(canteen_starttime,canteen_endtime);
+//                    num_canteen = logItems.size();
                     is_in = true;
                     List<LogItem> selfList = new ArrayList<>();
                     //过滤出此员工的食堂打卡记录
@@ -947,8 +1013,8 @@ public class MainActivity extends AppCompatActivity {
                                     dialogFinger.setTvMessage(ui.username + "   欢迎用餐");
                             }
                             chushihuaDialog();
-                            num_canteen = num_canteen + 1;
-                            tvCanteenNum.setText("已打卡  " + num_canteen);
+//                            num_canteen = num_canteen + 1;
+//                            tvCanteenNum.setText("已打卡  " + num_canteen);
                             LogsList.getInstance().Append(ui.userid, ui.username, 0, 0, 2, imei, 0, cardString, canteen_name);
                         }
                     } else {
@@ -960,8 +1026,8 @@ public class MainActivity extends AppCompatActivity {
                                 dialogFinger.setTvMessage(ui.username + "   欢迎用餐");
                         }
                         chushihuaDialog();
-                        num_canteen = num_canteen + 1;
-                        tvCanteenNum.setText("已打卡  " + num_canteen);
+//                        num_canteen = num_canteen + 1;
+//                        tvCanteenNum.setText("已打卡  " + num_canteen);
                         LogsList.getInstance().Append(ui.userid, ui.username, 0, 0, 2, imei, 0, cardString, canteen_name);
                     }
                 }
@@ -1299,7 +1365,7 @@ public class MainActivity extends AppCompatActivity {
         }
         HashMap<Object, Object> hashMap = new HashMap<>();
         hashMap.put("imei_code", imei);
-        List<LogItem> logItems = LogsList.getInstance().LoadAll();
+        List<LogItem> logItems = LogsList.getInstance().LoadNoUpdateData();
         final List<LogItem> selfList = new ArrayList<>();
         //过滤出此员工的食堂打卡记录
         if (logItems.size() > 0) {
@@ -1341,13 +1407,13 @@ public class MainActivity extends AppCompatActivity {
                 }
                 if (response.body().getResult() != null && response.body().getResult().getRes_code() == 1) {
                     ToastUtils.showShort("上传数据成功");
-                    if (isDelete) {
+//                    if (isDelete) {
                         for (int i = 0; i < selfList.size(); i++) {
-                            LogsList.getInstance().deleteLog(selfList.get(i).id);
+                            LogsList.getInstance().updateStateByUserId(selfList.get(i).userid);
                         }
-                        num_canteen = 0;
-                        tvCanteenNum.setText("已打卡  " + num_canteen);
-                    }
+//                        num_canteen = 0;
+//                        tvCanteenNum.setText("已打卡  " + num_canteen);
+//                    }
                 }
             }
 
@@ -1465,13 +1531,17 @@ public class MainActivity extends AppCompatActivity {
                             }
                             if (!StringUtils.isEmpty(mlist.get(i).getWorker_code())) {
                                 byte[] bytes = hexString2Bytes(mlist.get(i).getWorker_code());
-                                System.arraycopy(bytes, 0, userItem.enlcon1, 1, 4);
-                                UsersList.getInstance().UpdateUserNFC(userItem);
+                                if(bytes!=null){
+                                    System.arraycopy(bytes, 0, userItem.enlcon1, 1, 4);
+                                    UsersList.getInstance().UpdateUserNFC(userItem);
+                                }
                             }
                         } else {
                             if (!StringUtils.isEmpty(mlist.get(i).getWorker_code())) {
                                 byte[] bytes = hexString2Bytes(mlist.get(i).getWorker_code());
-                                System.arraycopy(bytes, 0, userItem.enlcon1, 1, 4);
+                                if(bytes!=null) {
+                                    System.arraycopy(bytes, 0, userItem.enlcon1, 1, 4);
+                                }
                             }
                             UsersList.getInstance().AppendUser(userItem);
                         }
@@ -1487,6 +1557,68 @@ public class MainActivity extends AppCompatActivity {
 
     @OnClick(R.id.btn_show_info)
     public void onViewClicked() {
-        startActivity(new Intent(MainActivity.this,CanteenTotalInfoActivity.class));
+        if (!NetworkUtils.isConnected()) {
+            ToastUtils.showLong("没有网络连接,自动上传用餐数据失败");
+            return;
+        }
+        HashMap<Object, Object> hashMap = new HashMap<>();
+        hashMap.put("imei_code", imei);
+        List<LogItem> logItems = LogsList.getInstance().LoadNoUpdateData();
+        final List<LogItem> selfList = new ArrayList<>();
+        //过滤出此员工的食堂打卡记录
+        if (logItems.size() > 0) {
+            for (int j = 0; j < logItems.size(); j++) {
+                if (logItems.get(j).fingertype == 2 && logItems.get(j).state == 0) {
+                    selfList.add(logItems.get(j));
+                }
+            }
+        }
+        if (selfList.size() <= 0) {
+            startActivity(new Intent(MainActivity.this, CanteenTotalInfoActivity.class));
+        }else {
+            List<HashMap<Object, Object>> list = new ArrayList<>();
+            if (selfList.size() > 0) {
+                for (int i = 0; i < selfList.size(); i++) {
+                    HashMap<Object, Object> hashMap1 = new HashMap<>();
+                    hashMap1.put("rt_employee_id", selfList.get(i).userid);
+                    hashMap1.put("rt_type", selfList.get(i).canteentype);
+                    hashMap1.put("rt_time", DateTool.utc2Local(selfList.get(i).datetime));
+                    hashMap1.put("worker_code", selfList.get(i).workcode);
+                    list.add(hashMap1);
+                }
+                hashMap.put("canteen_data", list);
+            }
+            final ProgressDialog dialog = new ProgressDialog(this);
+            dialog.setMessage("正在上传数据");
+            dialog.setCanceledOnTouchOutside(false);
+            dialog.show();
+            PosApi posApi = RetrofitClient.getInstance(this).create(PosApi.class);
+            Call<CanteenBean> objectCall = posApi.synchronize_canteen_data(hashMap);
+            objectCall.enqueue(new Callback<CanteenBean>() {
+                @Override
+                public void onResponse(Call<CanteenBean> call, Response<CanteenBean> response) { dialog.dismiss();
+                    if (response.body() == null) return;
+                    if (response.body().getError() != null) {
+                        ToastUtils.showShort(response.body().getError().getData().getMessage());
+                        return;
+                    }
+                    if (response.body().getResult() != null && response.body().getResult().getRes_code() == 1) {
+                        ToastUtils.showShort("上传数据成功");
+                        for (int i = 0; i < selfList.size(); i++) {
+                            LogsList.getInstance().updateStateByUserId(selfList.get(i).userid);
+                        }
+//                        num_canteen = 0;
+//                        tvCanteenNum.setText("已打卡  " + num_canteen);
+                        startActivity(new Intent(MainActivity.this, CanteenTotalInfoActivity.class));
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<CanteenBean> call, Throwable t) {
+                    dialog.dismiss();
+                }
+            });
+
+        }
     }
 }

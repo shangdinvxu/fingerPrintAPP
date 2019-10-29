@@ -16,7 +16,9 @@ import java.util.HashMap;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.GET;
 import retrofit2.http.POST;
+import retrofit2.http.Query;
 
 public interface PosApi {
     /**
@@ -99,6 +101,12 @@ public interface PosApi {
     @POST("get_user_is_canteen_manager_pos")
     Call<CanteenTotalBean> get_user_is_canteen_manager_pos(@Body HashMap hashMap);
 
+
+    /**
+     * fir 请求
+     * */
+    @GET("5c9493ffca87a819945c70c1")
+    Call<FirBean> getFirVersion(@Query("api_token") String token );
 
 
 }
